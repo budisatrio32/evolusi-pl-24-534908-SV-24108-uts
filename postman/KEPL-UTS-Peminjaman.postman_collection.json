@@ -1,0 +1,671 @@
+{
+  "info": {
+    "name": "KEPL UTS - API Peminjaman Buku",
+    "description": "RESTful API Laravel 12 + Sanctum. Jalankan \"Login - 200 berhasil\" lebih dulu: token otomatis disimpan ke variable {{token}} dan dipakai oleh semua request lewat Bearer Token di level collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "peminjaman_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login - 422 isian kosong",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test('Ada error untuk email dan password', function () {",
+                  "    const errors = pm.response.json().errors;",
+                  "    pm.expect(errors).to.have.property('email');",
+                  "    pm.expect(errors).to.have.property('password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"\",\n  \"password\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login - 401 password salah",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('Pesan error jelas', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Email atau password salah.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@kepl.test\",\n  \"password\": \"salah\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login - 200 berhasil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Mengembalikan token Bearer', function () {",
+                  "    pm.expect(json.token_type).to.eql('Bearer');",
+                  "    pm.expect(json.access_token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "// Simpan token supaya request lain otomatis memakai header Authorization.",
+                  "pm.collectionVariables.set('token', json.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@kepl.test\",\n  \"password\": \"password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Me - 200 data user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Email user sesuai', function () {",
+                  "    pm.expect(pm.response.json().data.email).to.eql('admin@kepl.test');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Peminjaman (CRUD)",
+      "item": [
+        {
+          "name": "List - 401 tanpa token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/peminjaman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peminjaman"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List - 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Data berupa array', function () {",
+                  "    pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/peminjaman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peminjaman"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create - 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Data tersimpan', function () {",
+                  "    pm.expect(json.data.judul_buku).to.eql('Domain-Driven Design');",
+                  "});",
+                  "pm.collectionVariables.set('peminjaman_id', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_peminjam\": \"Rina Kartika\",\n  \"judul_buku\": \"Domain-Driven Design\",\n  \"tanggal_pinjam\": \"2026-10-09\",\n  \"tanggal_kembali\": null,\n  \"status\": \"dipinjam\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/peminjaman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peminjaman"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create - 422 validasi gagal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test('Error per field', function () {",
+                  "    const errors = pm.response.json().errors;",
+                  "    pm.expect(errors).to.have.all.keys('judul_buku', 'tanggal_kembali', 'status');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_peminjam\": \"Rina Kartika\",\n  \"judul_buku\": \"\",\n  \"tanggal_pinjam\": \"2026-10-09\",\n  \"tanggal_kembali\": \"2026-10-01\",\n  \"status\": \"hilang\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/peminjaman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peminjaman"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Show - 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('ID sesuai', function () {",
+                  "    pm.expect(String(pm.response.json().data.id)).to.eql(pm.collectionVariables.get('peminjaman_id').toString());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/peminjaman/{{peminjaman_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peminjaman",
+                "{{peminjaman_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update - 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Status berubah', function () {",
+                  "    pm.expect(pm.response.json().data.status).to.eql('dikembalikan');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_peminjam\": \"Rina Kartika\",\n  \"judul_buku\": \"Domain-Driven Design\",\n  \"tanggal_pinjam\": \"2026-10-09\",\n  \"tanggal_kembali\": \"2026-10-16\",\n  \"status\": \"dikembalikan\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/peminjaman/{{peminjaman_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peminjaman",
+                "{{peminjaman_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete - 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/peminjaman/{{peminjaman_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peminjaman",
+                "{{peminjaman_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Show - 404 setelah dihapus",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Pesan 404', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Data tidak ditemukan.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/peminjaman/{{peminjaman_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peminjaman",
+                "{{peminjaman_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Logout",
+      "item": [
+        {
+          "name": "Logout - 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Me - 401 token sudah dicabut",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

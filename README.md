@@ -41,6 +41,46 @@ cp .env.example .env            # isi VITE_API_URL
 npm run dev                     # http://localhost:5173
 ```
 
+## RESTful API
+
+Autentikasi memakai **Laravel Sanctum** (token). Setelah login, kirim header
+`Authorization: Bearer <access_token>` pada setiap request. Semua respons berupa JSON.
+
+Akun demo (dibuat oleh `UserSeeder`): `admin@kepl.test` / `password`.
+
+| Metode | Endpoint | Auth | Respons |
+| ------ | -------- | ---- | ------- |
+| POST | `/api/login` | – | 200 token, 401 email/password salah, 422 input tidak valid |
+| GET | `/api/me` | Bearer | 200 data user, 401 |
+| POST | `/api/logout` | Bearer | 200, token dicabut |
+| GET | `/api/peminjaman` | Bearer | 200 daftar peminjaman |
+| POST | `/api/peminjaman` | Bearer | 201 data baru, 422 |
+| GET | `/api/peminjaman/{id}` | Bearer | 200, 404 |
+| PUT | `/api/peminjaman/{id}` | Bearer | 200, 404, 422 |
+| DELETE | `/api/peminjaman/{id}` | Bearer | 200, 404 |
+
+Tanpa token atau dengan token yang sudah dicabut, semua endpoint ber-Auth membalas
+`401 {"message":"Unauthenticated."}`.
+
+Contoh body `POST`/`PUT /api/peminjaman`:
+
+```json
+{
+  "nama_peminjam": "Rina Kartika",
+  "judul_buku": "Domain-Driven Design",
+  "tanggal_pinjam": "2026-10-09",
+  "tanggal_kembali": null,
+  "status": "dipinjam"
+}
+```
+
+### Postman
+
+Import [`postman/KEPL-UTS-Peminjaman.postman_collection.json`](postman/KEPL-UTS-Peminjaman.postman_collection.json).
+Variable `base_url` bernilai `http://127.0.0.1:8000/api`. Request **Login - 200 berhasil**
+menyimpan token ke variable `token` secara otomatis, dan collection memakai Bearer Token
+`{{token}}`, jadi seluruh collection bisa dijalankan berurutan lewat **Run collection**.
+
 ## Pengujian
 
 ```bash
