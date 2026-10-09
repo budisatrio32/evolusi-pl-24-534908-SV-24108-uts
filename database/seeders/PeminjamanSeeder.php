@@ -13,6 +13,12 @@ class PeminjamanSeeder extends Seeder
      */
     public function run(): void
     {
+        // Seeder dipanggil setiap container start; data contoh hanya dibuat sekali,
+        // supaya data milik user tidak tertimpa dan tidak terduplikasi.
+        if (Peminjaman::exists()) {
+            return;
+        }
+
         $data = [
             [
                 'nama_peminjam' => 'Prihastomo Budi Satrio',

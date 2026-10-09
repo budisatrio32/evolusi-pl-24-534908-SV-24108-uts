@@ -162,3 +162,124 @@ footer {
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+/* ---------- Tombol ---------- */
+
+button.btn {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.btn-sekunder {
+  background: #e4e7eb;
+  color: var(--ink);
+}
+
+.btn-bahaya {
+  background: #dc2626;
+}
+
+.btn-kecil {
+  margin-top: 0;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+.btn-link {
+  margin: 0;
+  padding: 0;
+  background: none;
+  color: var(--muted);
+}
+
+.btn-link:hover {
+  color: var(--accent);
+}
+
+/* ---------- Formulir ---------- */
+
+.card-sempit {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.form label {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.form input,
+.form select {
+  font: inherit;
+  font-weight: 400;
+  padding: 8px 10px;
+  border: 1px solid #cbd2d9;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.form input:focus,
+.form select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.form-baris {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.error-field {
+  color: #b91c1c;
+  font-weight: 400;
+}
+
+/* ---------- Halaman daftar ---------- */
+
+.judul-baris {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.judul-baris h1 {
+  margin: 0;
+}
+
+.aksi {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sukses {
+  background: #ecfdf5;
+  color: #065f46;
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+
+@media (max-width: 560px) {
+  nav {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .form-baris {
+    grid-template-columns: 1fr;
+  }
+}

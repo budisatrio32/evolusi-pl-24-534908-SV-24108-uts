@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -6,7 +6,8 @@ on:
   pull_request:
     branches: [main, dev]     # PR menuju main/dev wajib lolos sebelum merge
 
-# GITHUB_TOKEN cukup membaca kode; CI tidak menulis apa pun ke repository.
+# Default GITHUB_TOKEN hanya boleh membaca kode. Job yang butuh izin lebih
+# (deploy menulis package) memintanya sendiri.
 permissions:
   contents: read
 
@@ -81,3 +82,162 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: /api
+
+  # -------------------------------------------------------------------------
+  # Job 3 - Deploy: build image backend + frontend, uji dengan Docker Compose,
+  # lalu terbitkan ke GitHub Container Registry (ghcr.io).
+  #
+  # Hanya berjalan setelah kedua job test lolos DAN hanya untuk push ke main
+  # (yaitu saat PR dev -> main di-merge). Push ke branch lain dan Pull Request
+  # tetap menjalankan job test, tetapi job ini berstatus "skipped".
+  # -------------------------------------------------------------------------
+  deploy:
+    name: Deploy (GHCR)
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    # Secret APP_KEY, MYSQL_PASSWORD, MYSQL_ROOT_PASSWORD disimpan sebagai
+    # environment secret "production": hanya job yang memakai environment ini
+    # yang bisa membacanya, dan reviewer wajib menyetujui sebelum job berjalan.
+    environment:
+      name: production
+      url: https://github.com/${{ github.repository }}/packages
+
+    # Izin tambahan khusus job ini: menulis package ke ghcr.io.
+    permissions:
+      contents: read
+      packages: write
+
+    # Dua deploy tidak boleh berjalan bersamaan; yang baru menunggu yang lama.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Nama image di ghcr.io wajib huruf kecil, sedangkan nama repo memuat "SV".
+      # ${VAR,,} pada bash mengubah seluruh huruf menjadi kecil.
+      - name: Tentukan nama dan tag image
+        id: meta
+        run: |
+          PREFIX="ghcr.io/${GITHUB_REPOSITORY,,}"
+          TAG="sha-${GITHUB_SHA::7}"
+          {
+            echo "backend=${PREFIX}-backend"
+            echo "frontend=${PREFIX}-frontend"
+            echo "tag=${TAG}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Backend : ${PREFIX}-backend:${TAG} (+ latest)"
+          echo "Frontend: ${PREFIX}-frontend:${TAG} (+ latest)"
+
+      - name: Siapkan Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login ke ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # token otomatis, tidak perlu dibuat manual
+
+      # Image dibangun lalu dimuat ke Docker runner (belum didorong),
+      # supaya bisa diuji dulu sebelum diterbitkan.
+      - name: Build image backend (FrankenPHP)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: |
+            ${{ steps.meta.outputs.backend }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.backend }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=Backend Laravel 12 (FrankenPHP)
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build image frontend (Nginx)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          load: true
+          build-args: |
+            VITE_API_URL=${{ vars.VITE_API_URL || '/api' }}
+          tags: |
+            ${{ steps.meta.outputs.frontend }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.frontend }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=Frontend Vue 3 (Nginx)
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      # Nilai rahasia dibaca dari GitHub Secrets, bukan dari repository.
+      # GitHub otomatis menyamarkannya menjadi *** di log.
+      - name: Siapkan .env dari GitHub Secrets
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+        run: |
+          for nama in APP_KEY MYSQL_PASSWORD MYSQL_ROOT_PASSWORD; do
+            if [ -z "$(printenv "$nama")" ]; then
+              echo "::error::Secret $nama belum diatur di Settings > Environments > production"
+              exit 1
+            fi
+          done
+          {
+            echo "APP_KEY='${APP_KEY}'"
+            echo "MYSQL_DATABASE=kepl_uts"
+            echo "MYSQL_USER=kepl"
+            echo "MYSQL_PASSWORD='${MYSQL_PASSWORD}'"
+            echo "MYSQL_ROOT_PASSWORD='${MYSQL_ROOT_PASSWORD}'"
+            echo "FRONTEND_PORT=8080"
+            echo "BACKEND_PORT=8000"
+            echo "BACKEND_IMAGE=${{ steps.meta.outputs.backend }}"
+            echo "FRONTEND_IMAGE=${{ steps.meta.outputs.frontend }}"
+            echo "IMAGE_TAG=${{ steps.meta.outputs.tag }}"
+          } > .env
+          echo ".env dibuat. Nilai secret tidak pernah dicetak ke log."
+
+      - name: Jalankan stack Docker Compose
+        run: |
+          docker compose up -d --no-build --wait --wait-timeout 180
+          docker compose ps
+
+      - name: Smoke test (frontend -> backend -> MySQL)
+        run: sh docker/smoke-test.sh http://localhost:8080
+
+      - name: Tampilkan log bila gagal
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Push image ke ghcr.io
+        run: |
+          docker push --all-tags "${{ steps.meta.outputs.backend }}"
+          docker push --all-tags "${{ steps.meta.outputs.frontend }}"
+
+      - name: Ringkasan deploy
+        run: |
+          {
+            echo "## Image terbit di GitHub Container Registry"
+            echo ""
+            echo "| Image | Tag |"
+            echo "| --- | --- |"
+            echo "| \`${{ steps.meta.outputs.backend }}\` | \`${{ steps.meta.outputs.tag }}\`, \`latest\` |"
+            echo "| \`${{ steps.meta.outputs.frontend }}\` | \`${{ steps.meta.outputs.tag }}\`, \`latest\` |"
+            echo ""
+            echo "\`\`\`bash"
+            echo "docker pull ${{ steps.meta.outputs.backend }}:${{ steps.meta.outputs.tag }}"
+            echo "docker pull ${{ steps.meta.outputs.frontend }}:${{ steps.meta.outputs.tag }}"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Bersihkan stack
+        if: always()
+        run: docker compose down -v

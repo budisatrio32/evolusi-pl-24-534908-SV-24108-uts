@@ -3,25 +3,65 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PeminjamanRequest;
+use App\Http\Resources\PeminjamanResource;
 use App\Models\Peminjaman;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * CRUD peminjaman buku dalam bentuk JSON. Seluruh endpoint dilindungi auth:sanctum.
+ * Data yang tidak ada otomatis dibalas 404 lewat route model binding.
+ */
 class PeminjamanApiController extends Controller
 {
     /**
-     * Daftar peminjaman buku dalam bentuk JSON untuk aplikasi Vue.
+     * GET /api/peminjaman - 200
      */
-    public function index(): JsonResponse
+    public function index(): AnonymousResourceCollection
     {
-        $peminjaman = Peminjaman::latest()->get()->map(fn (Peminjaman $item) => [
-            'id' => $item->id,
-            'nama_peminjam' => $item->nama_peminjam,
-            'judul_buku' => $item->judul_buku,
-            'tanggal_pinjam' => $item->tanggal_pinjam->toDateString(),
-            'tanggal_kembali' => $item->tanggal_kembali?->toDateString(),
-            'status' => $item->status,
-        ]);
+        return PeminjamanResource::collection(Peminjaman::latest()->latest('id')->get());
+    }
 
-        return response()->json(['data' => $peminjaman]);
+    /**
+     * POST /api/peminjaman - 201, atau 422 bila tidak valid
+     */
+    public function store(PeminjamanRequest $request): JsonResponse
+    {
+        $peminjaman = Peminjaman::create($request->validated());
+
+        return (new PeminjamanResource($peminjaman))
+            ->additional(['message' => 'Data peminjaman berhasil ditambahkan.'])
+            ->response()
+            ->setStatusCode(201);
+    }
+
+    /**
+     * GET /api/peminjaman/{id} - 200, atau 404
+     */
+    public function show(Peminjaman $peminjaman): PeminjamanResource
+    {
+        return new PeminjamanResource($peminjaman);
+    }
+
+    /**
+     * PUT /api/peminjaman/{id} - 200, 404, atau 422
+     */
+    public function update(PeminjamanRequest $request, Peminjaman $peminjaman): PeminjamanResource
+    {
+        $peminjaman->update($request->validated());
+
+        return (new PeminjamanResource($peminjaman))
+            ->additional(['message' => 'Data peminjaman berhasil diperbarui.']);
+    }
+
+    /**
+     * DELETE /api/peminjaman/{id} - 200, atau 404
+     */
+    public function destroy(Peminjaman $peminjaman): JsonResponse
+    {
+        $peminjaman->delete();
+
+        return response()->json(['message' => 'Data peminjaman berhasil dihapus.']);
     }
 }
