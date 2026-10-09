@@ -16,6 +16,7 @@ aplikasi **Peminjaman Buku** dengan backend **Laravel 12** dan frontend **Vue 3*
 .
 ├── app/, routes/, database/, tests/   # backend Laravel 12 (PHP 8.2)
 ├── Dockerfile, docker/                # image backend (FrankenPHP)
+├── docker-compose.yml                 # MySQL + backend + frontend
 ├── frontend/                          # frontend Vue 3 + Vue Router + Vitest (+ Dockerfile Nginx)
 └── .github/workflows/ci.yml           # CI: Backend Test + Frontend Test
 ```
@@ -126,6 +127,45 @@ docker build -t kepl-uts-frontend:1.0 ./frontend
 # Backend saja (SQLite di dalam container)
 docker run -d --name backend -p 8000:8000 kepl-uts-backend:1.0
 curl -I http://localhost:8000/up        # Server: FrankenPHP Caddy
+```
+
+## Docker Compose
+
+[`docker-compose.yml`](docker-compose.yml) menjalankan tiga service dalam satu network
+`kepl-uts-net`:
+
+```
+Browser ──:8080──► frontend (Nginx) ──/api──► backend (FrankenPHP :8000) ──► db (MySQL 8.4)
+```
+
+| Service | Image | Port ke laptop | Keterangan |
+| ------- | ----- | -------------- | ---------- |
+| `db` | `mysql:8.4.11` | – (tertutup) | Data di named volume `kepl-uts-db-data` |
+| `backend` | dibangun dari [`Dockerfile`](Dockerfile) | `8000` | Terhubung ke host `db`, start setelah `db` healthy |
+| `frontend` | dibangun dari [`frontend/Dockerfile`](frontend/Dockerfile) | `8080` | Meneruskan `/api` ke `http://backend:8000`, start setelah `backend` healthy |
+
+Container saling menemukan lewat **nama service** (DNS internal Docker), bukan alamat IP.
+
+```bash
+cp .env.example .env
+php artisan key:generate        # mengisi APP_KEY, dipakai juga oleh container backend
+# ganti MYSQL_PASSWORD dan MYSQL_ROOT_PASSWORD di .env
+
+docker compose up -d --build    # build image lalu jalankan ketiga service
+docker compose ps               # ketiganya (healthy)
+docker compose logs -f backend  # migrasi, seeder, lalu log FrankenPHP
+```
+
+Aplikasi dapat dibuka di `http://localhost:8080` (login `admin@kepl.test` / `password`),
+dan API dapat diuji langsung di `http://localhost:8000/api`.
+
+Konfigurasi dibaca dari `.env` (tidak di-commit). Variabel Compose memakai awalan `MYSQL_`
+supaya tidak bentrok dengan `DB_*` milik Laravel lokal yang memakai SQLite. Compose
+memetakannya ke `DB_*` khusus untuk container backend.
+
+```bash
+docker compose down             # hapus container; data MySQL tetap ada di volume
+docker compose down -v          # hapus container DAN volume (data hilang)
 ```
 
 ## Pengujian
