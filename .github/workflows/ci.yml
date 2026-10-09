@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']          # semua branch diuji, termasuk feature/*
+  pull_request:
+    branches: [main, dev]     # PR menuju main/dev wajib lolos sebelum merge
+
+# GITHUB_TOKEN cukup membaca kode; CI tidak menulis apa pun ke repository.
+permissions:
+  contents: read
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Job 1 - Backend Laravel: gaya kode (Pint) dan feature test (PHPUnit)
+  # -------------------------------------------------------------------------
+  backend:
+    name: Backend Test        # nama ini dipakai sebagai required status check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          coverage: none
+
+      - name: Cache dependency Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+
+      - name: Pasang dependency (termasuk paket dev)
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Siapkan file environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Periksa gaya kode (Laravel Pint)
+        run: vendor/bin/pint --test
+
+      - name: Jalankan feature test
+        run: php artisan test
+
+  # -------------------------------------------------------------------------
+  # Job 2 - Frontend Vue: lint, unit test (Vitest), dan build produksi
+  # -------------------------------------------------------------------------
+  frontend:
+    name: Frontend Test       # nama ini dipakai sebagai required status check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Pasang dependency
+        run: npm ci
+
+      - name: Periksa gaya kode (oxlint + ESLint)
+        run: npm run lint
+
+      - name: Jalankan unit test (Vitest)
+        run: npm run test:unit -- --run
+
+      - name: Build aplikasi untuk produksi
+        run: npm run build
+        env:
+          VITE_API_URL: /api
