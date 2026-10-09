@@ -37,9 +37,27 @@ php artisan serve               # http://127.0.0.1:8000
 ```bash
 cd frontend
 npm ci
-cp .env.example .env            # isi VITE_API_URL
+cp .env.example .env            # VITE_API_URL=/api
 npm run dev                     # http://localhost:5173
 ```
+
+Saat `npm run dev`, Vite meneruskan (proxy) setiap request `/api/*` ke Laravel di
+`http://127.0.0.1:8000`, sehingga frontend dan API terlihat satu origin dan tidak
+membutuhkan CORS. Pola yang sama dipakai Nginx di dalam container produksi.
+
+Alur di frontend:
+
+1. Halaman **Masuk** memanggil `POST /api/login` lewat Axios, lalu menyimpan
+   `access_token` di `localStorage`.
+2. Request interceptor Axios ([`src/lib/http.js`](frontend/src/lib/http.js)) menambahkan
+   header `Authorization: Bearer <token>` ke setiap request.
+3. Response interceptor menangani `401`: sesi dihapus dan user diarahkan ke halaman login.
+4. Navigation guard Vue Router menolak membuka halaman ber-`meta.perluLogin` tanpa token.
+5. Halaman **Peminjaman** menampilkan daftar, tambah, ubah, dan hapus data. Error validasi
+   `422` dari Laravel ditampilkan di bawah field yang bersangkutan.
+
+> Variabel berawalan `VITE_` ikut tertanam di hasil build dan bisa dibaca siapa pun lewat
+> browser. Karena itu hanya alamat API yang ditaruh di sana, tidak pernah password atau token.
 
 ## RESTful API
 
