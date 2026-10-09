@@ -1,0 +1,46 @@
+# Build context image backend. Semakin sedikit yang masuk, semakin cepat build
+# dan semakin jarang cache layer batal tanpa alasan.
+
+# Wajib dikecualikan: dependency dipasang ulang di dalam image, rahasia tidak boleh ikut
+vendor
+node_modules
+.git
+.env
+.env.*
+!.env.example
+
+# Frontend Vue punya Dockerfile dan build context sendiri (frontend/)
+frontend
+
+# Konfigurasi Git, CI, dan Docker yang tidak dibutuhkan saat runtime
+.gitignore
+.gitattributes
+.github
+.dockerignore
+Dockerfile
+docker-compose*.yml
+compose*.yml
+
+# Basis data dan berkas sementara milik laptop
+database/*.sqlite*
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+bootstrap/cache/*.php
+.phpunit.result.cache
+.phpunit.cache
+
+# Pengujian dan dokumentasi, tidak dibutuhkan saat melayani request
+tests
+phpunit.xml
+postman
+README.md
+CLAUDE.md
+
+# Materi kuliah, laporan, dan berkas editor
+*.pdf
+Laporan PDF*/
+.vscode
+.idea
+.editorconfig

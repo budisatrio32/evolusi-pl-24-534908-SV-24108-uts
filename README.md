@@ -15,7 +15,8 @@ aplikasi **Peminjaman Buku** dengan backend **Laravel 12** dan frontend **Vue 3*
 ```
 .
 ├── app/, routes/, database/, tests/   # backend Laravel 12 (PHP 8.2)
-├── frontend/                          # frontend Vue 3 + Vue Router + Vitest
+├── Dockerfile, docker/                # image backend (FrankenPHP)
+├── frontend/                          # frontend Vue 3 + Vue Router + Vitest (+ Dockerfile Nginx)
 └── .github/workflows/ci.yml           # CI: Backend Test + Frontend Test
 ```
 
@@ -98,6 +99,34 @@ Import [`postman/KEPL-UTS-Peminjaman.postman_collection.json`](postman/KEPL-UTS-
 Variable `base_url` bernilai `http://127.0.0.1:8000/api`. Request **Login - 200 berhasil**
 menyimpan token ke variable `token` secara otomatis, dan collection memakai Bearer Token
 `{{token}}`, jadi seluruh collection bisa dijalankan berurutan lewat **Run collection**.
+
+## Docker
+
+Backend dan frontend masing-masing punya Dockerfile **multi-stage** dan `.dockerignore`.
+
+| Image | Dockerfile | Tahap | Base image (versi dikunci) |
+| ----- | ---------- | ----- | -------------------------- |
+| Backend | [`Dockerfile`](Dockerfile) | `vendor` → `runtime` | `dunglas/frankenphp:1.12.7-php8.2.34-alpine` |
+| Frontend | [`frontend/Dockerfile`](frontend/Dockerfile) | `build` → `runtime` | `node:24.21.0-alpine3.24` → `nginxinc/nginx-unprivileged:1.31.6-alpine3.24` |
+
+- **Backend** dilayani **FrankenPHP** (Caddy + PHP dalam satu binary) di port `8000`,
+  berjalan sebagai user `laravel` (bukan root). Saat start,
+  [`docker/entrypoint.sh`](docker/entrypoint.sh) menjalankan migrasi, seeder, dan
+  `php artisan optimize`.
+- **Frontend**: Node.js hanya dipakai untuk `npm ci` + `npm run build`. Image akhir hanya
+  berisi `dist/` yang dilayani Nginx non-root di port `8080`. Request `/api/*` diteruskan
+  ke `http://backend:8000` (nama service di jaringan Docker).
+- Tidak ada nilai rahasia di Dockerfile. `APP_KEY` dan password basis data diberikan saat
+  container dijalankan.
+
+```bash
+docker build -t kepl-uts-backend:1.0 .
+docker build -t kepl-uts-frontend:1.0 ./frontend
+
+# Backend saja (SQLite di dalam container)
+docker run -d --name backend -p 8000:8000 kepl-uts-backend:1.0
+curl -I http://localhost:8000/up        # Server: FrankenPHP Caddy
+```
 
 ## Pengujian
 
