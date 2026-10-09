@@ -40,6 +40,17 @@ export function formatTanggal(tanggal) {
 }
 
 /**
+ * Tanggal hari ini (zona waktu lokal browser) dalam format YYYY-MM-DD untuk input date.
+ * Tidak memakai toISOString() karena hasilnya UTC: sebelum pukul 07.00 WIB bisa jadi kemarin.
+ */
+export function tanggalHariIni(sekarang = new Date()) {
+  const bulan = String(sekarang.getMonth() + 1).padStart(2, '0')
+  const hari = String(sekarang.getDate()).padStart(2, '0')
+
+  return `${sekarang.getFullYear()}-${bulan}-${hari}`
+}
+
+/**
  * Mengubah kode status menjadi teks yang enak dibaca.
  */
 export function labelStatus(status) {

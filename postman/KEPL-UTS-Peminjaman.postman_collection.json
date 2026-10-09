@@ -1,33 +1,12 @@
 {
   "info": {
+    "_postman_id": "7ae611da-6681-4170-a642-292a747e8e68",
     "name": "KEPL UTS - API Peminjaman Buku",
     "description": "RESTful API Laravel 12 + Sanctum. Jalankan \"Login - 200 berhasil\" lebih dulu: token otomatis disimpan ke variable {{token}} dan dipakai oleh semua request lewat Bearer Token di level collection.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "50393220",
+    "_collection_link": "https://go.postman.co/collection/50393220-7ae611da-6681-4170-a642-292a747e8e68?source=collection_link"
   },
-  "auth": {
-    "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{token}}",
-        "type": "string"
-      }
-    ]
-  },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://127.0.0.1:8000/api"
-    },
-    {
-      "key": "token",
-      "value": ""
-    },
-    {
-      "key": "peminjaman_id",
-      "value": ""
-    }
-  ],
   "item": [
     {
       "name": "1. Auth",
@@ -53,6 +32,9 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
               {
@@ -64,9 +46,6 @@
                 "value": "application/json"
               }
             ],
-            "auth": {
-              "type": "noauth"
-            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"\",\n  \"password\": \"\"\n}",
@@ -107,6 +86,9 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
               {
@@ -118,9 +100,6 @@
                 "value": "application/json"
               }
             ],
-            "auth": {
-              "type": "noauth"
-            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"admin@kepl.test\",\n  \"password\": \"salah\"\n}",
@@ -165,6 +144,9 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
               {
@@ -176,9 +158,6 @@
                 "value": "application/json"
               }
             ],
-            "auth": {
-              "type": "noauth"
-            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"admin@kepl.test\",\n  \"password\": \"password\"\n}",
@@ -259,6 +238,9 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [
               {
@@ -266,9 +248,6 @@
                 "value": "application/json"
               }
             ],
-            "auth": {
-              "type": "noauth"
-            },
             "url": {
               "raw": "{{base_url}}/peminjaman",
               "host": [
@@ -666,6 +645,30 @@
           "response": []
         }
       ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "peminjaman_id",
+      "value": ""
     }
   ]
 }

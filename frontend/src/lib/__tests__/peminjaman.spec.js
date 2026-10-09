@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { formatLabelPeminjaman, formatTanggal, labelStatus, ringkasStatus } from '../peminjaman'
+import {
+  formatLabelPeminjaman,
+  formatTanggal,
+  labelStatus,
+  ringkasStatus,
+  tanggalHariIni,
+} from '../peminjaman'
 
 describe('formatLabelPeminjaman', () => {
   it('menggabungkan nama peminjam dan judul buku', () => {
@@ -50,5 +56,16 @@ describe('ringkasStatus', () => {
 
   it('mengembalikan nol untuk daftar kosong', () => {
     expect(ringkasStatus()).toEqual({ total: 0, dipinjam: 0, dikembalikan: 0 })
+  })
+})
+
+describe('tanggalHariIni', () => {
+  it('memakai tanggal lokal, bukan UTC', () => {
+    // 9 Oktober 2026 pukul 06.30 waktu lokal; dalam UTC (WIB) masih 8 Oktober.
+    expect(tanggalHariIni(new Date(2026, 9, 9, 6, 30))).toBe('2026-10-09')
+  })
+
+  it('menambahkan nol di depan bulan dan hari satu digit', () => {
+    expect(tanggalHariIni(new Date(2026, 0, 5))).toBe('2026-01-05')
   })
 })
