@@ -18,7 +18,7 @@ aplikasi **Peminjaman Buku** dengan backend **Laravel 12** dan frontend **Vue 3*
 ├── Dockerfile, docker/                # image backend (FrankenPHP)
 ├── docker-compose.yml                 # MySQL + backend + frontend
 ├── frontend/                          # frontend Vue 3 + Vue Router + Vitest (+ Dockerfile Nginx)
-└── .github/workflows/ci.yml           # CI: Backend Test + Frontend Test
+└── .github/workflows/ci.yml           # CI/CD: Backend Test + Frontend Test + Deploy (GHCR)
 ```
 
 ## Menjalankan di Lokal
@@ -193,12 +193,58 @@ main  ← branch stabil, hanya menerima merge dari dev melalui Pull Request
 - Pesan commit mengikuti [Conventional Commits](https://www.conventionalcommits.org/)
   (`feat:`, `fix:`, `test:`, `docs:`, `ci:`, `chore:`).
 
-## Continuous Integration
+## Continuous Integration dan Continuous Deployment
 
 Workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) berjalan pada setiap push
-dan setiap Pull Request menuju `main`/`dev`, berisi dua job yang berjalan paralel:
+dan setiap Pull Request menuju `main`/`dev`:
 
-| Job | Isi |
-| --- | --- |
-| **Backend Test** | `composer install`, Laravel Pint, `php artisan test` |
-| **Frontend Test** | `npm ci`, oxlint + ESLint, Vitest, `npm run build` |
+```
+Backend Test ──┐
+               ├──► Deploy (GHCR)   ← hanya push ke main
+Frontend Test ─┘
+```
+
+| Job | Kapan berjalan | Isi |
+| --- | -------------- | --- |
+| **Backend Test** | semua push dan PR | `composer install`, Laravel Pint, `php artisan test` |
+| **Frontend Test** | semua push dan PR | `npm ci`, oxlint + ESLint, Vitest, `npm run build` |
+| **Deploy (GHCR)** | push ke `main`, setelah kedua test lolos | build image backend + frontend, uji stack Docker Compose ([`docker/smoke-test.sh`](docker/smoke-test.sh)), lalu push ke `ghcr.io` |
+
+Job deploy dibatasi oleh `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`
+dan memakai environment **`production`** (wajib disetujui reviewer). Pada branch lain dan
+Pull Request, job ini berstatus *skipped*.
+
+### Secrets dan Variables
+
+| Nama | Jenis | Dipakai untuk |
+| ---- | ----- | ------------- |
+| `APP_KEY` | Environment secret (`production`) | `.env` stack Compose saat smoke test |
+| `MYSQL_PASSWORD` | Environment secret (`production`) | password user MySQL aplikasi |
+| `MYSQL_ROOT_PASSWORD` | Environment secret (`production`) | password root MySQL |
+| `VITE_API_URL` | Repository variable | build argument image frontend (nilai publik, bukan rahasia) |
+| `GITHUB_TOKEN` | Otomatis dari GitHub | login dan push ke `ghcr.io` (`permissions: packages: write`) |
+
+Nilai rahasia tidak pernah ditulis di repository maupun Dockerfile, dan GitHub
+menyamarkannya menjadi `***` di log.
+
+### Image di GitHub Container Registry
+
+| Image | Tag |
+| ----- | --- |
+| `ghcr.io/budisatrio32/evolusi-pl-24-534908-sv-24108-uts-backend` | `sha-<7 karakter commit>`, `latest` |
+| `ghcr.io/budisatrio32/evolusi-pl-24-534908-sv-24108-uts-frontend` | `sha-<7 karakter commit>`, `latest` |
+
+Menjalankan image dari GHCR dengan Docker Compose: isi `.env` dengan
+
+```
+BACKEND_IMAGE=ghcr.io/budisatrio32/evolusi-pl-24-534908-sv-24108-uts-backend
+FRONTEND_IMAGE=ghcr.io/budisatrio32/evolusi-pl-24-534908-sv-24108-uts-frontend
+IMAGE_TAG=sha-xxxxxxx
+```
+
+lalu jalankan:
+
+```bash
+docker compose pull backend frontend
+docker compose up -d --no-build --wait
+```
